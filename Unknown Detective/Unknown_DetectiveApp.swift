@@ -11,11 +11,22 @@ import CoreData
 @main
 struct Unknown_DetectiveApp: App {
     let persistenceController = PersistenceController.shared
+    @State private var showSplash = !UserDefaults.standard.bool(forKey: "hasShownSplash")
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environment(\.managedObjectContext, persistenceController.container.viewContext)
+            ZStack {
+                ContentView()
+                    .environment(\.managedObjectContext, persistenceController.container.viewContext)
+                if showSplash {
+                    SplashView {
+                        UserDefaults.standard.set(true, forKey: "hasShownSplash")
+                        showSplash = false
+                    }
+                    .transition(.opacity)
+                    .zIndex(1)
+                }
+            }
         }
     }
 }
