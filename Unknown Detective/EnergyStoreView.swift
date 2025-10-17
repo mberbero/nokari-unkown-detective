@@ -25,6 +25,15 @@ struct EnergyStoreView: View {
                 packsSection
                 subscriptionSection
             }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(
+                LinearGradient(
+                    colors: [NoirTheme.backgroundTop, NoirTheme.backgroundBottom],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
             .navigationTitle("Enerji Mağazası")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -35,6 +44,8 @@ struct EnergyStoreView: View {
                 Alert(title: Text("Bilgi"), message: Text(alertMessage), dismissButton: .default(Text("Tamam")))
             }
         }
+        .tint(NoirTheme.accent)
+        .preferredColorScheme(.dark)
         .presentationDetents([.medium, .large])
     }
 
@@ -46,20 +57,21 @@ struct EnergyStoreView: View {
                 Text("\(gameState.energy)/\(gameState.maxEnergy)")
                     .font(.headline.monospacedDigit())
             }
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(NoirTheme.neon)
             HStack {
                 Label("İpucu Kredisi", systemImage: "lightbulb.fill")
                 Spacer()
                 Text(gameState.hasDetectivePlus ? "Sınırsız" : "\(gameState.hintCredits)")
                     .font(.headline.monospacedDigit())
-                    .foregroundStyle(gameState.hasDetectivePlus ? Color.green : Color.accentColor)
+                    .foregroundStyle(gameState.hasDetectivePlus ? NoirTheme.neon : NoirTheme.caution)
             }
             if gameState.energy >= gameState.maxEnergy {
                 Text("Enerjin zaten maksimum.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NoirTheme.subtleText)
             }
         }
+        .headerProminence(.increased)
     }
 
     private var rewardedSection: some View {
@@ -69,13 +81,15 @@ struct EnergyStoreView: View {
             } label: {
                 HStack {
                     Image(systemName: "play.rectangle.fill")
-                        .foregroundStyle(.yellow)
+                        .foregroundStyle(NoirTheme.neon)
                     Text("Reklam izle ve +1 enerji kazan")
                     Spacer()
                     if isRewarding {
                         ProgressView()
+                            .tint(NoirTheme.accent)
                     }
                 }
+                .foregroundStyle(Color.white)
             }
             .disabled(isRewarding)
             Button {
@@ -83,18 +97,20 @@ struct EnergyStoreView: View {
             } label: {
                 HStack {
                     Image(systemName: "lightbulb")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(NoirTheme.caution)
                     Text("Reklam izle ve +1 ipucu kredisi kazan")
                     Spacer()
                     if isRewarding {
                         ProgressView()
+                            .tint(NoirTheme.accent)
                     }
                 }
+                .foregroundStyle(Color.white)
             }
             .disabled(isRewarding || gameState.hasDetectivePlus)
             Text("Reklamlar 24 saatte en fazla 3 kez izlenebilir. Simülasyon amaçlı süre 3 saniye.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(NoirTheme.subtleText)
         }
     }
 
@@ -110,7 +126,7 @@ struct EnergyStoreView: View {
                                 .font(.subheadline.weight(.semibold))
                             Text(pack.subtitle)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(NoirTheme.subtleText)
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 4) {
@@ -121,7 +137,7 @@ struct EnergyStoreView: View {
                                 Text("+\(pack.energy)")
                             }
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(NoirTheme.subtleText)
                         }
                     }
                     .padding(.vertical, 6)
@@ -130,7 +146,7 @@ struct EnergyStoreView: View {
             }
             Text("Satın alımlar StoreKit 2 ile doğrulanacak. Bu makette sadece yerel enerji artırımı yapılır.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(NoirTheme.subtleText)
         }
     }
 
@@ -141,13 +157,14 @@ struct EnergyStoreView: View {
                     .font(.subheadline.weight(.semibold))
                 Text("49₺/ay veya 499₺/yıl. Premium vakalara erişim ve sınırsız ipucu." )
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NoirTheme.subtleText)
                 Button {
                     alertMessage = "Detective Plus için abonelik akışı henüz bağlı değil. StoreKit 2 entegrasyonu sonrası etkinleşecek."
                     showReceiptAlert = true
                 } label: {
                     Label("Aboneliği başlat", systemImage: "infinity")
                         .font(.body.weight(.semibold))
+                        .foregroundStyle(NoirTheme.neon)
                 }
             }
             .padding(.vertical, 6)
