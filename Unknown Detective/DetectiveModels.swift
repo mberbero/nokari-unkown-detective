@@ -24,6 +24,17 @@ enum CaseType: String, CaseIterable, Identifiable {
             return "Şehrin en güvenli kasasından çalınan mücevher."
         }
     }
+
+    var energyCost: Int {
+        switch self {
+        case .homicide:
+            return 2
+        case .missingPerson:
+            return 1
+        case .heist:
+            return 3
+        }
+    }
 }
 
 enum CaseStatus: Equatable {
@@ -31,6 +42,14 @@ enum CaseStatus: Equatable {
     case investigation
     case solved
     case failed(reason: String)
+}
+
+enum HintUnlockMethod: Equatable {
+    case dailyAllowance
+    case hintCredit
+    case energy
+    case rewarded
+    case subscription
 }
 
 struct Clue: Identifiable, Equatable {
@@ -99,6 +118,13 @@ struct CaseSnapshot: Equatable {
         }
         return next
     }
+}
+
+struct CaseHint: Identifiable, Equatable {
+    let id: UUID
+    let text: String
+    let createdAt: Date
+    let method: HintUnlockMethod
 }
 
 protocol DetectiveEngine {

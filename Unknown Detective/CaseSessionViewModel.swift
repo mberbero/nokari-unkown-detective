@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import Combine
 
 @MainActor
 final class CaseSessionViewModel: ObservableObject {
@@ -14,14 +15,15 @@ final class CaseSessionViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var inputText = ""
+    @Published private(set) var hints: [CaseHint] = []
 
     let caseType: CaseType
 
-    private let engine: DetectiveEngine
+    private let engine: any DetectiveEngine
 
-    init(caseType: CaseType, engine: DetectiveEngine = MockDetectiveEngine()) {
+    init(caseType: CaseType, engine: (any DetectiveEngine)? = nil) {
         self.caseType = caseType
-        self.engine = engine
+        self.engine = engine ?? MockDetectiveEngine()
     }
 
     func start() {
@@ -55,6 +57,14 @@ final class CaseSessionViewModel: ObservableObject {
                 errorMessage = error.localizedDescription
             }
             isLoading = false
+        }
+    }
+
+    func unlockHint(for snapshot: CaseSnapshot, method: HintUnlockMethod) {
+        let hintText = HintProvider.makeHint(from: snapshot, existingHints: hints)
+        let hint = CaseHint(id: UUID(), text: hintText, createdAt: Date(), method: method)
+        withAnimation {
+            hints.append(hint)
         }
     }
 }
