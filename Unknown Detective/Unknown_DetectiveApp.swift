@@ -11,7 +11,7 @@ import CoreData
 @main
 struct Unknown_DetectiveApp: App {
     let persistenceController = PersistenceController.shared
-    @State private var showSplash = !UserDefaults.standard.bool(forKey: "hasShownSplash")
+    @State private var showSplash = true
 
     var body: some Scene {
         WindowGroup {
@@ -20,7 +20,6 @@ struct Unknown_DetectiveApp: App {
                     .environment(\.managedObjectContext, persistenceController.container.viewContext)
                 if showSplash {
                     SplashView {
-                        UserDefaults.standard.set(true, forKey: "hasShownSplash")
                         showSplash = false
                     }
                     .transition(.opacity)
