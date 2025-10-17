@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum CaseType: String, CaseIterable, Identifiable {
+enum CaseType: String, CaseIterable, Identifiable, Codable {
     case homicide = "Homicide"
     case missingPerson = "Missing Person"
     case heist = "High-Profile Heist"
@@ -37,14 +37,48 @@ enum CaseType: String, CaseIterable, Identifiable {
     }
 }
 
-enum CaseStatus: Equatable {
+enum CaseStatus: Equatable, Codable {
     case briefing
     case investigation
     case solved
     case failed(reason: String)
+
+    private enum CodingKeys: String, CodingKey { case name, reason }
+    private enum Name: String, Codable { case briefing, investigation, solved, failed }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let name = try container.decode(Name.self, forKey: .name)
+        switch name {
+        case .briefing:
+            self = .briefing
+        case .investigation:
+            self = .investigation
+        case .solved:
+            self = .solved
+        case .failed:
+            let reason = try container.decodeIfPresent(String.self, forKey: .reason) ?? ""
+            self = .failed(reason: reason)
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .briefing:
+            try container.encode(Name.briefing, forKey: .name)
+        case .investigation:
+            try container.encode(Name.investigation, forKey: .name)
+        case .solved:
+            try container.encode(Name.solved, forKey: .name)
+        case .failed(let reason):
+            try container.encode(Name.failed, forKey: .name)
+            try container.encode(reason, forKey: .reason)
+        }
+    }
 }
 
-enum HintUnlockMethod: Equatable {
+enum HintUnlockMethod: String, Equatable, Codable {
     case dailyAllowance
     case hintCredit
     case energy
@@ -52,8 +86,8 @@ enum HintUnlockMethod: Equatable {
     case subscription
 }
 
-struct Clue: Identifiable, Equatable {
-    enum Category: String {
+struct Clue: Identifiable, Equatable, Codable {
+    enum Category: String, Codable {
         case physicalEvidence = "Physical Evidence"
         case testimony = "Testimony"
         case document = "Document"
@@ -65,8 +99,8 @@ struct Clue: Identifiable, Equatable {
     let category: Category
 }
 
-struct SuspectProfile: Identifiable, Equatable {
-    enum TrustLevel: String {
+struct SuspectProfile: Identifiable, Equatable, Codable {
+    enum TrustLevel: String, Codable {
         case unknown = "Unknown"
         case skeptical = "Skeptical"
         case cooperative = "Cooperative"
@@ -81,8 +115,8 @@ struct SuspectProfile: Identifiable, Equatable {
     var trust: TrustLevel
 }
 
-struct CaseTurn: Identifiable, Equatable {
-    enum Speaker {
+struct CaseTurn: Identifiable, Equatable, Codable {
+    enum Speaker: String, Codable {
         case detective
         case engine
     }
@@ -94,7 +128,7 @@ struct CaseTurn: Identifiable, Equatable {
     let newClues: [Clue]
 }
 
-struct CaseSnapshot: Equatable {
+struct CaseSnapshot: Equatable, Codable {
     let id: UUID
     let type: CaseType
     var title: String
@@ -120,7 +154,7 @@ struct CaseSnapshot: Equatable {
     }
 }
 
-struct CaseHint: Identifiable, Equatable {
+struct CaseHint: Identifiable, Equatable, Codable {
     let id: UUID
     let text: String
     let createdAt: Date

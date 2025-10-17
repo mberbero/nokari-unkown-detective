@@ -21,9 +21,19 @@ final class CaseSessionViewModel: ObservableObject {
 
     private let engine: any DetectiveEngine
 
-    init(caseType: CaseType, engine: (any DetectiveEngine)? = nil) {
+    init(caseType: CaseType, engine: (any DetectiveEngine)? = nil, resumeSnapshot: CaseSnapshot? = nil, initialHints: [CaseHint] = [], initialInputText: String = "") {
         self.caseType = caseType
         self.engine = engine ?? MockDetectiveEngine()
+        self.snapshot = resumeSnapshot
+        self.hints = initialHints
+        self.inputText = initialInputText
+
+        // If we are resuming an existing session, align the engine's internal progress with the snapshot.
+        if let resumeSnapshot {
+            Task {
+                await resyncEngineProgress(with: resumeSnapshot)
+            }
+        }
     }
 
     func start() {
@@ -65,6 +75,25 @@ final class CaseSessionViewModel: ObservableObject {
         let hint = CaseHint(id: UUID(), text: hintText, createdAt: Date(), method: method)
         withAnimation {
             hints.append(hint)
+        }
+    }
+
+    // MARK: - Resume support
+    private func resyncEngineProgress(with snapshot: CaseSnapshot) async {
+        // Do not resync closed cases
+        switch snapshot.status {
+        case .solved, .failed:
+            return
+        default:
+            break
+        }
+        // Count engine turns already present in the snapshot.
+        let engineTurns = snapshot.turns.filter { $0.speaker == .engine }.count
+        guard engineTurns > 0 else { return }
+
+        // Advance underlying engine state by issuing discarded answers so next real question picks the correct beat.
+        for _ in 0..<engineTurns {
+            _ = try? await engine.answer(question: "[sync]", in: snapshot)
         }
     }
 }

@@ -6,36 +6,82 @@
 //
 
 import SwiftUI
+import Combine
 
 struct ContentView: View {
     @StateObject private var gameState = GameState(initialMaxEnergy: 10, dailyEnergyAllowance: 3, dailyHintAllowance: 2)
+    @StateObject private var historyStore = CaseHistoryStore()
     @State private var path: [CaseType] = []
     @State private var showEnergyAlert = false
     @State private var alertMessage = ""
     @State private var showStore = false
+    @State private var showSettings = false
+    @State private var showHistory = false
+    @State private var resumeRequested = false
 
     var body: some View {
         NavigationStack(path: $path) {
-            CaseSelectionView(gameState: gameState, startCase: { caseType in
-                if gameState.consumeEnergy(for: caseType) {
+            CaseSelectionView(
+                gameState: gameState,
+                startCase: { caseType in
+                    resumeRequested = false
+                    if gameState.consumeEnergy(for: caseType) {
+                        Haptics.success()
+                        AppPreferences.lastCaseType = caseType
+                        path.append(caseType)
+                    } else {
+                        Haptics.warning()
+                        alertMessage = "Bu vaka için yeterli enerjin yok. Enerji yenilenene kadar bekle veya mağazadan takviye al."
+                        showEnergyAlert = true
+                    }
+                },
+                openStore: {
+                    Haptics.light(); showStore = true
+                },
+                resumeCase: { caseType in
+                    // Do not consume energy on resume
+                    resumeRequested = true
+                    Haptics.light()
                     path.append(caseType)
-                } else {
-                    alertMessage = "Bu vaka için yeterli enerjin yok. Enerji yenilenene kadar bekle veya mağazadan takviye al."
-                    showEnergyAlert = true
                 }
-            }, openStore: {
-                showStore = true
-            })
+            )
             .navigationTitle("Unknown Detective")
             .navigationDestination(for: CaseType.self) { caseType in
-                CaseSessionView(viewModel: CaseSessionViewModel(caseType: caseType))
+                if resumeRequested, let payload = ActiveSessionStore.load(), payload.snapshot.type == caseType {
+                    // Use zero-latency engine to instantly resync internal state on resume
+                    CaseSessionView(viewModel: CaseSessionViewModel(
+                        caseType: caseType,
+                        engine: MockDetectiveEngine(latency: 0),
+                        resumeSnapshot: payload.snapshot,
+                        initialHints: payload.hints,
+                        initialInputText: payload.inputText
+                    ))
+                } else {
+                    CaseSessionView(viewModel: CaseSessionViewModel(caseType: caseType))
+                }
             }
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button {
-                        showStore = true
+                        Haptics.light()
+                        showSettings = true
                     } label: {
-                        Label("Mağaza", systemImage: "cart")
+                        Label("Ayarlar", systemImage: "gearshape")
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    HStack(spacing: 12) {
+                        Button {
+                            Haptics.light()
+                            showHistory = true
+                        } label: {
+                            Label("Geçmiş", systemImage: "book.closed")
+                        }
+                        Button {
+                            showStore = true
+                        } label: {
+                            Label("Mağaza", systemImage: "cart")
+                        }
                     }
                 }
             }
@@ -49,7 +95,26 @@ struct ContentView: View {
         .sheet(isPresented: $showStore) {
             EnergyStoreView(gameState: gameState)
         }
+        .sheet(isPresented: $showSettings) {
+            SettingsView(gameState: gameState)
+        }
+        .sheet(isPresented: $showHistory) {
+            CaseHistoryView(onStartCase: { type in
+                if gameState.consumeEnergy(for: type) {
+                    Haptics.success()
+                    AppPreferences.lastCaseType = type
+                    resumeRequested = false
+                    path.append(type)
+                } else {
+                    Haptics.warning()
+                    alertMessage = "Bu vaka için yeterli enerjin yok. Enerji yenilenene kadar bekle veya mağazadan takviye al."
+                    showEnergyAlert = true
+                }
+            })
+            .environmentObject(historyStore)
+        }
         .environmentObject(gameState)
+        .environmentObject(historyStore)
         .background(
             LinearGradient(
                 colors: [NoirTheme.backgroundTop, NoirTheme.backgroundBottom],
@@ -66,6 +131,10 @@ struct CaseSelectionView: View {
     @ObservedObject var gameState: GameState
     let startCase: (CaseType) -> Void
     let openStore: () -> Void
+    let resumeCase: ((CaseType) -> Void)?
+
+    @State private var now = Date()
+    @State private var didClaimBonus = false
 
     var body: some View {
         ScrollView {
@@ -76,6 +145,9 @@ struct CaseSelectionView: View {
             .padding(.horizontal, 20)
             .padding(.top, 24)
             .padding(.bottom, 40)
+        }
+        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { date in
+            now = date
         }
     }
 
@@ -89,6 +161,9 @@ struct CaseSelectionView: View {
             return "banknote"
         }
     }
+
+    private var hasActiveSession: Bool { ActiveSessionStore.hasActive }
+    private var activeSessionTitle: String { ActiveSessionStore.load()?.snapshot.title ?? "" }
 
     private var statusCard: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -108,6 +183,53 @@ struct CaseSelectionView: View {
             }
             energyBar
             hintBar
+            Text("Yenilemeye kalan: \(formattedCountdown)")
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(NoirTheme.subtleText)
+
+            if gameState.isDailyBonusAvailable(now: now) {
+                Button {
+                    if gameState.claimDailyBonus(now: now) {
+                        didClaimBonus = true
+                        Haptics.success()
+                        if AppPreferences.notificationsEnabled {
+                            NotificationsManager.shared.scheduleDailyReminder(at: gameState.nextRefillDate)
+                        }
+                    } else {
+                        Haptics.warning()
+                    }
+                } label: {
+                    Label("Günlük bonusu al (+1 enerji, +1 ipucu)", systemImage: "gift.fill")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(NoirTheme.accent)
+                .clipShape(Capsule())
+            } else {
+                Text("Günlük bonus için kalan: \(dailyBonusCountdown)")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(NoirTheme.subtleText)
+            }
+
+            if hasActiveSession, let type = ActiveSessionStore.load()?.snapshot.type {
+                Button {
+                    resumeCase?(type)
+                } label: {
+                    Label("Devam et: \(activeSessionTitle)", systemImage: "play.circle")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(NoirTheme.neon)
+                .clipShape(Capsule())
+            } else if let last = AppPreferences.lastCaseType {
+                Button { startCase(last) } label: {
+                    Label("Hızlı Başlat: \(last.rawValue)", systemImage: "forward.fill")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+                .tint(NoirTheme.neon)
+                .clipShape(Capsule())
+            }
         }
         .padding(20)
         .background(NoirTheme.cardBackground.opacity(0.9))
@@ -162,6 +284,22 @@ struct CaseSelectionView: View {
                 .frame(height: 10)
             }
         }
+    }
+
+    private var formattedCountdown: String {
+        let remaining = Int(gameState.timeUntilNextRefill(now: now))
+        let h = remaining / 3600
+        let m = (remaining % 3600) / 60
+        let s = remaining % 60
+        return String(format: "%02d:%02d:%02d", h, m, s)
+    }
+
+    private var dailyBonusCountdown: String {
+        let remaining = Int(gameState.timeUntilDailyBonus(now: now))
+        let h = remaining / 3600
+        let m = (remaining % 3600) / 60
+        let s = remaining % 60
+        return String(format: "%02d:%02d:%02d", h, m, s)
     }
 
     private var caseGrid: some View {

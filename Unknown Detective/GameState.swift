@@ -25,7 +25,42 @@ final class GameState: ObservableObject {
     private let maxEnergyKey = "GameState.maxEnergy"
     private let hintKey = "GameState.hintCredits"
     private let detectivePlusKey = "GameState.detectivePlus"
+    private let lastDailyBonusKey = "GameState.lastDailyBonus"
     private var lastRefill: Date
+    private var lastDailyBonus: Date?
+
+    // MARK: - Refill schedule helpers
+    var nextRefillDate: Date {
+        let now = Date()
+        if let nextMidnight = calendar.nextDate(after: now, matching: DateComponents(hour: 0, minute: 0, second: 0), matchingPolicy: .strict, direction: .forward) {
+            return nextMidnight
+        }
+        return calendar.startOfDay(for: now).addingTimeInterval(24 * 60 * 60)
+    }
+
+    func timeUntilNextRefill(now: Date = Date()) -> TimeInterval {
+        max(0, nextRefillDate.timeIntervalSince(now))
+    }
+
+    // MARK: - Daily bonus helpers
+    func isDailyBonusAvailable(now: Date = Date()) -> Bool {
+        guard let last = lastDailyBonus else { return true }
+        return !calendar.isDate(now, inSameDayAs: last)
+    }
+
+    func timeUntilDailyBonus(now: Date = Date()) -> TimeInterval {
+        isDailyBonusAvailable(now: now) ? 0 : timeUntilNextRefill(now: now)
+    }
+
+    @discardableResult
+    func claimDailyBonus(now: Date = Date()) -> Bool {
+        guard isDailyBonusAvailable(now: now) else { return false }
+        addEnergy(1, allowOverflow: false, now: now)
+        addHintCredits(1, now: now)
+        lastDailyBonus = now
+        persistDailyBonus()
+        return true
+    }
 
     init(initialMaxEnergy: Int = 10, dailyEnergyAllowance: Int = 3, dailyHintAllowance: Int = 1, defaults: UserDefaults = .standard, calendar: Calendar = .current, now: Date = Date()) {
         self.defaults = defaults
@@ -39,6 +74,7 @@ final class GameState: ObservableObject {
         self.hasDetectivePlus = defaults.bool(forKey: detectivePlusKey)
 
         let storedHintCredits = defaults.object(forKey: hintKey) as? Int
+        self.lastDailyBonus = defaults.object(forKey: lastDailyBonusKey) as? Date
 
         if let storedEnergy = defaults.object(forKey: energyKey) as? Int,
            let storedRefill = defaults.object(forKey: refillKey) as? Date {
@@ -121,9 +157,22 @@ final class GameState: ObservableObject {
         persistState()
     }
 
+    func setDetectivePlus(_ active: Bool) {
+        hasDetectivePlus = active
+        persistState()
+    }
+
     func increaseMaxEnergy(by amount: Int) {
         guard amount > 0 else { return }
         maxEnergy += amount
+        persistState()
+    }
+
+    func resetProgress(now: Date = Date()) {
+        energy = dailyEnergyAllowance
+        hintCredits = dailyHintAllowance
+        hasDetectivePlus = false
+        lastRefill = now
         persistState()
     }
 
@@ -141,5 +190,14 @@ final class GameState: ObservableObject {
         defaults.set(maxEnergy, forKey: maxEnergyKey)
         defaults.set(hintCredits, forKey: hintKey)
         defaults.set(hasDetectivePlus, forKey: detectivePlusKey)
+        persistDailyBonus()
+    }
+
+    private func persistDailyBonus() {
+        if let lastDailyBonus {
+            defaults.set(lastDailyBonus, forKey: lastDailyBonusKey)
+        } else {
+            defaults.removeObject(forKey: lastDailyBonusKey)
+        }
     }
 }

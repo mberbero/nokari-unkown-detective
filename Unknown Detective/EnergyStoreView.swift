@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import StoreKit
 
 struct EnergyStoreView: View {
     @ObservedObject var gameState: GameState
@@ -14,6 +15,8 @@ struct EnergyStoreView: View {
     @State private var isRewarding = false
     @State private var showReceiptAlert = false
     @State private var alertMessage = ""
+
+    @StateObject private var store = StoreKitManager.shared
 
     private let packs = EnergyPack.samplePacks
 
@@ -47,6 +50,20 @@ struct EnergyStoreView: View {
         .tint(NoirTheme.accent)
         .preferredColorScheme(.dark)
         .presentationDetents([.medium, .large])
+        .onAppear {
+            Haptics.light()
+            Task { @MainActor in
+                await store.loadProducts()
+                let active = await store.hasActiveDetectivePlus()
+                gameState.setDetectivePlus(active)
+                store.observeTransactionUpdates { tx in
+                    if tx.productID == StoreKitManager.ProductID.detectivePlusMonthly.rawValue ||
+                        tx.productID == StoreKitManager.ProductID.detectivePlusYearly.rawValue {
+                        Task { @MainActor in gameState.setDetectivePlus(true) }
+                    }
+                }
+            }
+        }
     }
 
     private var statusSection: some View {
@@ -118,7 +135,7 @@ struct EnergyStoreView: View {
         Section("Enerji Paketleri") {
             ForEach(packs) { pack in
                 Button {
-                    purchase(pack: pack)
+                    Task { await purchase(pack: pack) }
                 } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -130,7 +147,7 @@ struct EnergyStoreView: View {
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 4) {
-                            Text(pack.price)
+                            Text(price(for: pack))
                                 .font(.subheadline.weight(.bold))
                             HStack(spacing: 4) {
                                 Image(systemName: "bolt")
@@ -142,7 +159,10 @@ struct EnergyStoreView: View {
                     }
                     .padding(.vertical, 6)
                 }
-                .disabled(gameState.energy >= gameState.maxEnergy)
+                .disabled(gameState.energy >= gameState.maxEnergy || store.isLoading)
+            }
+            if let err = store.lastError {
+                Text(err).font(.caption).foregroundStyle(.red)
             }
             Text("Satın alımlar StoreKit 2 ile doğrulanacak. Bu makette sadece yerel enerji artırımı yapılır.")
                 .font(.caption)
@@ -155,19 +175,72 @@ struct EnergyStoreView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Sınırsız vaka, sınırsız enerji")
                     .font(.subheadline.weight(.semibold))
-                Text("49₺/ay veya 499₺/yıl. Premium vakalara erişim ve sınırsız ipucu." )
+                Text("49₺/ay veya 499₺/yıl. Premium vakalara erişim ve sınırsız ipucu.")
                     .font(.caption)
                     .foregroundStyle(NoirTheme.subtleText)
-                Button {
-                    alertMessage = "Detective Plus için abonelik akışı henüz bağlı değil. StoreKit 2 entegrasyonu sonrası etkinleşecek."
-                    showReceiptAlert = true
-                } label: {
-                    Label("Aboneliği başlat", systemImage: "infinity")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(NoirTheme.neon)
+                HStack {
+                    Button { Task { await startSubscription(.detectivePlusMonthly) } } label: {
+                        Text(buttonTitle(for: .detectivePlusMonthly))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(NoirTheme.neon)
+
+                    Button { Task { await startSubscription(.detectivePlusYearly) } } label: {
+                        Text(buttonTitle(for: .detectivePlusYearly))
+                    }
+                    .buttonStyle(.bordered)
                 }
             }
             .padding(.vertical, 6)
+        }
+    }
+
+    private func price(for pack: EnergyPack) -> String {
+        let id: StoreKitManager.ProductID
+        switch pack.id {
+        case "pack.small": id = .packSmall
+        case "pack.medium": id = .packMedium
+        case "pack.large": id = .packLarge
+        default: return pack.price
+        }
+        if let product = store.products[id] {
+            return product.displayPrice
+        }
+        return pack.price
+    }
+
+    private func buttonTitle(for id: StoreKitManager.ProductID) -> String {
+        if let product = store.products[id] {
+            switch id {
+            case .detectivePlusMonthly:
+                return String(format: NSLocalizedString("Aylık %@", comment: "Monthly price"), product.displayPrice)
+            case .detectivePlusYearly:
+                return String(format: NSLocalizedString("Yıllık %@", comment: "Yearly price"), product.displayPrice)
+            default:
+                return product.displayPrice
+            }
+        }
+        switch id {
+        case .detectivePlusMonthly:
+            return "Aylık"
+        case .detectivePlusYearly:
+            return "Yıllık"
+        default:
+            return "Satın Al"
+        }
+    }
+
+    private func startSubscription(_ id: StoreKitManager.ProductID) async {
+        let ok = await store.purchase(id)
+        if ok {
+            alertMessage = "Abonelik etkinleştirildi: Detective Plus aktif."
+            showReceiptAlert = true
+            gameState.setDetectivePlus(true)
+            Haptics.success()
+        } else if let err = store.lastError {
+            alertMessage = err
+            showReceiptAlert = true
+            Haptics.warning()
         }
     }
 
@@ -181,6 +254,7 @@ struct EnergyStoreView: View {
                 alertMessage = "Reklam ödülü eklendi: +1 enerji."
                 showReceiptAlert = true
                 isRewarding = false
+                Haptics.success()
             }
         }
     }
@@ -195,19 +269,44 @@ struct EnergyStoreView: View {
                 alertMessage = "Reklam ödülü eklendi: +1 ipucu kredisi."
                 showReceiptAlert = true
                 isRewarding = false
+                Haptics.success()
             }
         }
     }
 
-    private func purchase(pack: EnergyPack) {
+    private func purchase(pack: EnergyPack) async {
         guard gameState.energy < gameState.maxEnergy else {
             alertMessage = "Enerji maksimum, satın alma gerekmiyor."
             showReceiptAlert = true
+            Haptics.warning()
             return
         }
-        gameState.addEnergy(pack.energy, allowOverflow: true)
-        alertMessage = "\(pack.title) satın alındı: +\(pack.energy) enerji."
-        showReceiptAlert = true
+        let id: StoreKitManager.ProductID?
+        switch pack.id {
+        case "pack.small": id = .packSmall
+        case "pack.medium": id = .packMedium
+        case "pack.large": id = .packLarge
+        default: id = nil
+        }
+        if let id, let _ = store.products[id] {
+            let ok = await store.purchase(id)
+            if ok {
+                gameState.addEnergy(pack.energy, allowOverflow: true)
+                alertMessage = "\(pack.title) satın alındı: +\(pack.energy) enerji."
+                showReceiptAlert = true
+                Haptics.success()
+            } else if let err = store.lastError {
+                alertMessage = err
+                showReceiptAlert = true
+                Haptics.warning()
+            }
+        } else {
+            // Fallback if products not loaded
+            gameState.addEnergy(pack.energy, allowOverflow: true)
+            alertMessage = "\(pack.title) satın alındı: +\(pack.energy) enerji."
+            showReceiptAlert = true
+            Haptics.success()
+        }
     }
 }
 

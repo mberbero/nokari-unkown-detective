@@ -10,9 +10,11 @@ import Foundation
 struct CaseSessionView: View {
     @StateObject var viewModel: CaseSessionViewModel
     @EnvironmentObject private var gameState: GameState
+    @EnvironmentObject private var history: CaseHistoryStore
 
     @State private var showHintSheet = false
     @State private var hintEnergyCost = 2
+    @State private var lastTurnID: UUID?
 
     init(viewModel: CaseSessionViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -45,34 +47,60 @@ struct CaseSessionView: View {
     @ViewBuilder
     private var content: some View {
         if let snapshot = viewModel.snapshot {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    CaseHeaderView(snapshot: snapshot)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        CaseHeaderView(snapshot: snapshot)
 
-                    if shouldShowHintBanner(for: snapshot) {
-                        HintBanner(
-                            hints: viewModel.hints,
-                            hasDetectivePlus: gameState.hasDetectivePlus,
-                            isCaseClosed: isCaseClosed(snapshot),
-                            requestHint: requestHint
-                        )
+                        if shouldShowHintBanner(for: snapshot) {
+                            HintBanner(
+                                hints: viewModel.hints,
+                                hasDetectivePlus: gameState.hasDetectivePlus,
+                                isCaseClosed: isCaseClosed(snapshot),
+                                requestHint: requestHint
+                            )
+                        }
+
+                        ConversationSection(turns: snapshot.turns)
+                            .padding(.horizontal, 16)
+
+                        SuspectsSection(suspects: snapshot.suspects)
+                            .padding(.horizontal, 16)
+
+                        CluesSection(clues: snapshot.clues)
+                            .padding(.horizontal, 16)
+
+                        HintsSection(hints: viewModel.hints)
+                            .padding(.horizontal, 16)
+
+                        // Anchor to scroll bottom
+                        Color.clear.frame(height: 1).id("BOTTOM")
+
+                        Spacer(minLength: 100)
                     }
-
-                    ConversationSection(turns: snapshot.turns)
-                        .padding(.horizontal, 16)
-
-                    SuspectsSection(suspects: snapshot.suspects)
-                        .padding(.horizontal, 16)
-
-                    CluesSection(clues: snapshot.clues)
-                        .padding(.horizontal, 16)
-
-                    HintsSection(hints: viewModel.hints)
-                        .padding(.horizontal, 16)
-
-                    Spacer(minLength: 100)
+                    .padding(.top, 16)
                 }
-                .padding(.top, 16)
+                .onAppear { scrollToBottom(proxy: proxy, animated: false) }
+                .onChange(of: viewModel.snapshot?.turns.last?.id) { _, _ in
+                    scrollToBottom(proxy: proxy)
+                }
+            }
+            .onChange(of: viewModel.snapshot) { _, _ in
+                persistIfNeeded()
+            }
+            .onChange(of: viewModel.hints) { _, _ in
+                persistIfNeeded()
+            }
+            .onChange(of: viewModel.snapshot?.status) { _, _ in
+                guard let s = viewModel.snapshot else { return }
+                switch s.status {
+                case .solved, .failed:
+                    history.add(from: s)
+                    AppPreferences.lastCaseType = nil
+                    ActiveSessionStore.clear()
+                default:
+                    break
+                }
             }
             .safeAreaInset(edge: .bottom) {
                 InputBar(text: $viewModel.inputText, isLoading: viewModel.isLoading) {
@@ -93,6 +121,22 @@ struct CaseSessionView: View {
                 }
             }
             .padding()
+        }
+    }
+
+    private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool = true) {
+        withAnimation(animated ? .easeOut(duration: 0.25) : nil) {
+            proxy.scrollTo("BOTTOM", anchor: .bottom)
+        }
+    }
+
+    private func persistIfNeeded() {
+        guard let s = viewModel.snapshot else { return }
+        switch s.status {
+        case .solved, .failed:
+            ActiveSessionStore.clear()
+        default:
+            ActiveSessionStore.save(snapshot: s, hints: viewModel.hints, inputText: viewModel.inputText)
         }
     }
 
@@ -143,7 +187,14 @@ private struct CaseHeaderView: View {
             Text(snapshot.synopsis)
                 .font(.subheadline)
                 .foregroundStyle(NoirTheme.subtleText)
-            CaseStatusBadge(status: snapshot.status)
+            HStack(spacing: 8) {
+                CaseStatusBadge(status: snapshot.status)
+                if let last = snapshot.turns.last?.timestamp {
+                    Text("• Son aktivite: \(last, style: .relative)")
+                        .font(.caption2)
+                        .foregroundStyle(NoirTheme.subtleText)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
@@ -562,6 +613,7 @@ private struct HintPaywallView: View {
                             if gameState.consumeHintCredit() {
                                 completeUnlock(method: .hintCredit)
                             } else {
+                                Haptics.warning()
                                 infoMessage = "İpucu kredin kalmadı. Reklam izleyebilir veya enerji kullanabilirsin."
                             }
                         } label: {
@@ -573,10 +625,11 @@ private struct HintPaywallView: View {
                         if gameState.consumeEnergy(points: hintEnergyCost) {
                             completeUnlock(method: .energy)
                         } else {
+                            Haptics.warning()
                             infoMessage = "Yeterli enerjin yok. Enerji mağazasından takviye alabilirsin."
                         }
                     } label: {
-                        Label("\(hintEnergyCost) enerji karşılığı aç", systemImage: "bolt")
+                        Label("\(hintEnergyCost) enerji karşılığında aç", systemImage: "bolt")
                     }
 
                     Button {
@@ -603,6 +656,7 @@ private struct HintPaywallView: View {
         }
         .presentationDetents([.medium, .large])
         .onAppear {
+            Haptics.light()
             if gameState.hasDetectivePlus { autoUnlock(method: .subscription) }
         }
     }
@@ -610,6 +664,7 @@ private struct HintPaywallView: View {
     private func completeUnlock(method: HintUnlockMethod) {
         infoMessage = nil
         onUnlock(method)
+        Haptics.success()
         didAutoUnlock = true
         dismiss()
     }
@@ -619,6 +674,7 @@ private struct HintPaywallView: View {
         didAutoUnlock = true
         DispatchQueue.main.async {
             onUnlock(method)
+            Haptics.success()
             dismiss()
         }
     }
@@ -626,6 +682,7 @@ private struct HintPaywallView: View {
     private func triggerRewarded() {
         guard !isRewarding else { return }
         isRewarding = true
+        Haptics.light()
         infoMessage = "Reklam oynatılıyor..."
         Task {
             try? await Task.sleep(nanoseconds: 2_500_000_000)

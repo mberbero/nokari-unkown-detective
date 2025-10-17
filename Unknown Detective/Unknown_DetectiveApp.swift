@@ -11,6 +11,7 @@ import CoreData
 @main
 struct Unknown_DetectiveApp: App {
     let persistenceController = PersistenceController.shared
+    @AppStorage("hasSeenSplash") private var hasSeenSplash = false
     @State private var showSplash = true
 
     var body: some Scene {
@@ -18,13 +19,20 @@ struct Unknown_DetectiveApp: App {
             ZStack {
                 ContentView()
                     .environment(\.managedObjectContext, persistenceController.container.viewContext)
-                if showSplash {
+                if !hasSeenSplash && showSplash {
                     SplashView {
-                        showSplash = false
+                        hasSeenSplash = true
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            showSplash = false
+                        }
                     }
                     .transition(.opacity)
                     .zIndex(1)
                 }
+            }
+            .onAppear {
+                // If splash was shown before, skip it
+                if hasSeenSplash { showSplash = false }
             }
         }
     }

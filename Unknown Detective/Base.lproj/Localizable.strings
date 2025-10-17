@@ -1,0 +1,109 @@
+/* Common */
+"Unknown Detective" = "Unknown Detective";
+"Ayarlar" = "Ayarlar";
+"Geçmiş" = "Geçmiş";
+"Mağaza" = "Mağaza";
+"Kapat" = "Kapat";
+"Bilgi" = "Bilgi";
+"Tamam" = "Tamam";
+
+/* ContentView / Home */
+"Dedektif Durumu" = "Dedektif Durumu";
+"Yenilemeye kalan:" = "Yenilemeye kalan:";
+"Günlük bonusu al (+1 enerji, +1 ipucu)" = "Günlük bonusu al (+1 enerji, +1 ipucu)";
+"Günlük bonus için kalan:" = "Günlük bonus için kalan:";
+"Devam et:" = "Devam et:";
+"Hızlı Başlat:" = "Hızlı Başlat:";
+"Enerji" = "Enerji";
+"İpucu Kredisi" = "İpucu Kredisi";
+"Sınırsız" = "Sınırsız";
+"Yeni Vaka Seç" = "Yeni Vaka Seç";
+"Enerji yetersiz" = "Enerji yetersiz";
+"Enerji Yetersiz" = "Enerji Yetersiz";
+"Bu vaka için yeterli enerjin yok. Enerji yenilenene kadar bekle veya mağazadan takviye al." = "Bu vaka için yeterli enerjin yok. Enerji yenilenene kadar bekle veya mağazadan takviye al.";
+
+/* Energy Store */
+"Enerji Mağazası" = "Enerji Mağazası";
+"Mevcut Enerji" = "Mevcut Enerji";
+"Enerjin zaten maksimum." = "Enerjin zaten maksimum.";
+"Ödüllü Reklam" = "Ödüllü Reklam";
+"Reklam izle ve +1 enerji kazan" = "Reklam izle ve +1 enerji kazan";
+"Reklam izle ve +1 ipucu kredisi kazan" = "Reklam izle ve +1 ipucu kredisi kazan";
+"Reklamlar 24 saatte en fazla 3 kez izlenebilir. Simülasyon amaçlı süre 3 saniye." = "Reklamlar 24 saatte en fazla 3 kez izlenebilir. Simülasyon amaçlı süre 3 saniye.";
+"Enerji Paketleri" = "Enerji Paketleri";
+"Satın alımlar StoreKit 2 ile doğrulanacak. Bu makette sadece yerel enerji artırımı yapılır." = "Satın alımlar StoreKit 2 ile doğrulanacak. Bu makette sadece yerel enerji artırımı yapılır.";
+"Detective Plus" = "Detective Plus";
+"Sınırsız vaka, sınırsız enerji" = "Sınırsız vaka, sınırsız enerji";
+"49₺/ay veya 499₺/yıl. Premium vakalara erişim ve sınırsız ipucu." = "49₺/ay veya 499₺/yıl. Premium vakalara erişim ve sınırsız ipucu.";
+"Aylık %@" = "Aylık %@";
+"Yıllık %@" = "Yıllık %@";
+"Abonelik etkinleştirildi: Detective Plus aktif." = "Abonelik etkinleştirildi: Detective Plus aktif.";
+"Enerji maksimum, satın alma gerekmiyor." = "Enerji maksimum, satın alma gerekmiyor.";
+"Reklam ödülü eklendi: +1 enerji." = "Reklam ödülü eklendi: +1 enerji.";
+"Reklam ödülü eklendi: +1 ipucu kredisi." = "Reklam ödülü eklendi: +1 ipucu kredisi.";
+
+/* Settings */
+"Durum" = "Durum";
+"İpucu" = "İpucu";
+"Detective Plus" = "Detective Plus";
+"Tercihler" = "Tercihler";
+"Haptik geri bildirim" = "Haptik geri bildirim";
+"Bildirimler" = "Bildirimler";
+"Günlük bonus/yenileme hatırlat" = "Günlük bonus/yenileme hatırlat";
+"Günlük hatırlatma ayarlandı." = "Günlük hatırlatma ayarlandı.";
+"Bildirim izni verilmedi." = "Bildirim izni verilmedi.";
+"Bildirim izni: açık" = "Bildirim izni: açık";
+"Bildirim izni: kapalı" = "Bildirim izni: kapalı";
+"Bildirim izni: geçici" = "Bildirim izni: geçici";
+"Bildirim izni: sorulmadı" = "Bildirim izni: sorulmadı";
+"Bildirim izni: bilinmiyor" = "Bildirim izni: bilinmiyor";
+"Oynanış" = "Oynanış";
+"Günlük yenilemeyi uygula" = "Günlük yenilemeyi uygula";
+"Maksimum enerji +5" = "Maksimum enerji +5";
+"İlerlemeyi sıfırla" = "İlerlemeyi sıfırla";
+"Enerji ve ipucu günlük seviyeye getirildi." = "Enerji ve ipucu günlük seviyeye getirildi.";
+"Maksimum enerji +5 artırıldı." = "Maksimum enerji +5 artırıldı.";
+"İlerleme sıfırlandı." = "İlerleme sıfırlandı.";
+
+/* Case Session */
+"Vaka" = "Vaka";
+"Şüpheliler" = "Şüpheliler";
+"İpuçları" = "İpuçları";
+"Henüz ipucu yok." = "Henüz ipucu yok.";
+"İpucu Defteri" = "İpucu Defteri";
+"Henüz ipucu açılmadı. İpucu almak için üstteki paneli kullan." = "Henüz ipucu açılmadı. İpucu almak için üstteki paneli kullan.";
+"İpucu Merkezi" = "İpucu Merkezi";
+"İpucu aç" = "İpucu aç";
+"Yeni ipucu" = "Yeni ipucu";
+"Açılmış ipucu sayısı:" = "Açılmış ipucu sayısı:";
+"Detective Plus aktif: İhtiyaç duyduğunda ipuçları anında açılıyor." = "Detective Plus aktif: İhtiyaç duyduğunda ipuçları anında açılıyor.";
+"Vaka kapandı; açılan ipuçlarını inceleyebilirsin fakat yenisi eklenmeyecek." = "Vaka kapandı; açılan ipuçlarını inceleyebilirsin fakat yenisi eklenmeyecek.";
+"Takıldığında ipuçlarından yararlan. İlk ipucu genellikle son kanıtı detaylandırır." = "Takıldığında ipuçlarından yararlan. İlk ipucu genellikle son kanıtı detaylandırır.";
+"İpucu Aç" = "İpucu Aç";
+"İpucu Seçenekleri" = "İpucu Seçenekleri";
+"Detective Plus ile ücretsiz aç" = "Detective Plus ile ücretsiz aç";
+"İpucu kredisi" = "İpucu kredisi";
+"Enerji karşılığı" = "Enerji karşılığı";
+"Reklam ödülü" = "Reklam ödülü";
+"Günlük ücretsiz hak" = "Günlük ücretsiz hak";
+"Reklam izle ve ipucu aç" = "Reklam izle ve ipucu aç";
+"Reklam oynatılıyor..." = "Reklam oynatılıyor...";
+"Reklam tamamlandı. İpucu açılıyor." = "Reklam tamamlandı. İpucu açılıyor.";
+"Yeni ipuçları:" = "Yeni ipuçları:";
+"• Son aktivite:" = "• Son aktivite:";
+"Briefing" = "Briefing";
+"Soruşturma" = "Soruşturma";
+"Çözüldü" = "Çözüldü";
+"Çözülemedi" = "Çözülemedi";
+
+/* Splash */
+"Karanlığı aydınlığa çevir." = "Karanlığı aydınlığa çevir.";
+
+/* Case History */
+"Tümünü Sil" = "Tümünü Sil";
+"Henüz kapanmış vaka yok." = "Henüz kapanmış vaka yok.";
+"Dönüş:" = "Dönüş:";
+
+/* Notifications */
+"Günlük hatırlatma" = "Günlük hatırlatma";
+"Günlük bonusun hazır. Yeni vakalara dalmak için geri dön!" = "Günlük bonusun hazır. Yeni vakalara dalmak için geri dön!";
